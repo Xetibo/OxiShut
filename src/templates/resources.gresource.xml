@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/org/dashie/OxiShut/icons/scalable/actions">
+    <file preprocess="xml-stripblanks">shutdown.svg</file>
+    <file preprocess="xml-stripblanks">reboot.svg</file>
+    <file preprocess="xml-stripblanks">sleep.svg</file>
+  </gresource>
+</gresources>
