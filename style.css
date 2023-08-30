@@ -10,11 +10,9 @@
 .button {
   margin: 5px;
   background-color: #2b2c3b;
-  /* -gtk-icon-style: symbolic; */
   -gtk-icon-size: 5rem;
 }
 
 .button:hover {
   background-color: #3e4152;
-  -gtk-icon-palette: success blue, error red, warning orange;
 }
