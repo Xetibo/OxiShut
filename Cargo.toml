@@ -2,6 +2,9 @@
 name = "oxishut"
 version = "0.1.0"
 edition = "2021"
+description = "A small logout prompt written in rust."
+repository = "https://github.com/DashieTM/OxiShut"
+license = "GPL-3.0-only"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
