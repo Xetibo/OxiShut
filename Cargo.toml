@@ -1,7 +1,7 @@
 [package]
 name = "oxishut"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "A small logout prompt written in rust."
 repository = "https://github.com/DashieTM/OxiShut"
 license = "GPL-3.0-only"
@@ -9,10 +9,6 @@ license = "GPL-3.0-only"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-directories-next = "2.0.0"
-gtk = { version = "0.6.6", package = "gtk4" }
-gtk4-layer-shell = "0.0.3"
-adw = { version = ">= 0.3.1", package = "libadwaita", features = ["v1_2"] }
-
-[build-dependencies]
-glib-build-tools = "0.18"
+oxiced = "0.4.0"
+iced = { version = "0.13.1", features = ["advanced", "canvas", "image", "svg"] }
+iced_layershell = "0.13.5"

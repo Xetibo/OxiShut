@@ -1,49 +1,100 @@
-{ rustPlatform
-, rust-bin
-, pkg-config
-, wrapGAppsHook4
-, gtk4
-, gtk4-layer-shell
-, libadwaita
-, lib
-, lockFile
-, ...
-}:
-let
+{
+  rustPlatform,
+  pkg-config,
+  libGL,
+  libxkbcommon,
+  wayland,
+  libclang,
+  cargo,
+  cargo-watch,
+  rustc,
+  rust-analyzer,
+  clippy,
+  lib,
+  lockFile,
+  vulkan-loader,
+  wayland-protocols,
+  libX11,
+  libXrandr,
+  libXi,
+  libXcursor,
+  ...
+}: let
   cargoToml = builtins.fromTOML (builtins.readFile ../Cargo.toml);
+  libPath = lib.makeLibraryPath [
+    libGL
+    libxkbcommon
+    wayland
+    pkg-config
+    libclang
+  ];
 in
-rustPlatform.buildRustPackage rec {
-  pname = cargoToml.package.name;
-  version = cargoToml.package.version;
+  rustPlatform.buildRustPackage rec {
+    pname = cargoToml.package.name;
+    version = cargoToml.package.version;
 
-  src = ../.;
+    src = ../.;
 
-  buildInputs = [
-    pkg-config
-    gtk4
-    libadwaita
-    gtk4-layer-shell
-  ];
+    buildInputs = [
+      pkg-config
+      libGL
+      libxkbcommon
+      wayland
+      libclang
+    ];
 
-  cargoLock = {
-    inherit lockFile;
-  };
+    cargoLock = {
+      inherit lockFile;
+      #outputHashes = {
+      #  "oxiced-0.1.0" = "";
+      #};
+    };
 
-  nativeBuildInputs = [
-    pkg-config
-    wrapGAppsHook4
-    # (rust-bin.selectLatestNightlyWith
-    # (toolchain: toolchain.default))
-    rust-bin.nightly."2024-05-10".default
-  ];
-  copyLibs = true;
+    nativeBuildInputs = [
+      pkg-config
+      wayland
+      cargo
+      cargo-watch
+      rustc
+      rust-analyzer
+      clippy
+      libGL
+      libxkbcommon
+      libclang
+    ];
 
-  meta = with lib; {
-    description = "A small, simple calculator written in rust/gtk4";
-    homepage = "https://github.com/DashieTM/OxiShut";
-    changelog = "https://github.com/DashieTM/OxiShut/releases/tag/${version}";
-    license = licenses.gpl3;
-    maintainers = with maintainers; [ DashieTM ];
-    mainProgram = "oxishut";
-  };
-}
+    copyLibs = true;
+    LD_LIBRARY_PATH = libPath;
+    LIBCLANG_PATH = "${libclang.lib}/lib";
+
+    postFixup = let
+      libPath = lib.makeLibraryPath [
+        libGL
+        vulkan-loader
+        wayland
+        wayland-protocols
+        libxkbcommon
+        libX11
+        libXrandr
+        libXi
+        libXcursor
+      ];
+    in ''
+      patchelf --set-rpath "${libPath}" "$out/bin/oxishut"
+    '';
+
+    postInstall = ''
+      install -D --mode=444 $src/assets/shutdown.svg $out/share/pixmaps/oxishut/shutdown.svg
+      install -D --mode=444 $src/assets/reboot.svg $out/share/pixmaps/oxishut/reboot.svg
+      install -D --mode=444 $src/assets/sleep.svg $out/share/pixmaps/oxishut/sleep.svg
+    '';
+
+    meta = with lib; {
+      description = "A simple iced logout prompt";
+      homepage = "https://github.com/Xetibo/OxiShut";
+      changelog = "https://github.com/Xetibo/OxiShut/releases/tag/${version}";
+      license = licenses.gpl3;
+      maintainers = with maintainers; [DashieTM];
+      mainProgram = "oxishut";
+    };
+  }
