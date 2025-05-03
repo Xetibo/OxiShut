@@ -1,223 +1,306 @@
-use std::{env, fs, path::PathBuf, process::Command, rc::Rc};
+use std::{path::PathBuf, process::Command};
 
-use adw::{Application, ApplicationWindow};
-use directories_next as dirs;
-use gtk::{
-    gdk::Key,
-    gio::{self, SimpleAction},
-    glib::{self, clone, ExitCode},
-    prelude::{ActionMapExt, ApplicationExt, ApplicationExtManual},
-    traits::{BoxExt, ButtonExt, GestureSingleExt, GtkWindowExt, WidgetExt},
-    Button,
+use iced::widget::container;
+use iced::{
+    Alignment, Element, Length, Renderer, Subscription, Task, Theme, event,
+    keyboard::{Modifiers, key::Named},
+    widget::{button::Status, container::Style},
+};
+use iced_layershell::{
+    Application,
+    actions::LayershellCustomActions,
+    reexport::{Anchor, KeyboardInteractivity, Layer},
+    settings::{LayerShellSettings, Settings},
+};
+use oxiced::{
+    theme::get_theme,
+    widgets::{
+        common::{darken_color, lighten_color},
+        oxi_button::{self, ButtonVariant},
+    },
 };
 
-const APP_ID: &'static str = "org.dashie.OxiShut";
-
-fn main() -> glib::ExitCode {
-    let mut css_string = "".to_string();
-    let args: Vec<String> = env::args().collect();
-    if args.len() > 1 {
-        let mut argiter = args.iter();
-        argiter.next().unwrap();
-        match argiter.next().unwrap().as_str() {
-            "--css" => {
-                let next = argiter.next();
-                if next.is_some() {
-                    css_string = next.unwrap().clone();
-                }
-            }
-            _ => {
-                print!(
-                    "usage:
-    --css: use a specific path to load a css style sheet.
-    --help: show this message.\n"
-                );
-                return ExitCode::FAILURE;
-            }
-        }
-    } else {
-        css_string = create_config_dir().to_str().unwrap().into();
-    }
-
-    gio::resources_register_include!("src.templates.gresource")
-        .expect("Failed to register resources.");
-
-    let app = Application::builder().application_id(APP_ID).build();
-
-    app.connect_startup(move |_| {
-        adw::init().unwrap();
-        load_css(&css_string);
-    });
-
-    app.connect_activate(build_ui);
-    app.run_with_args(&[""])
+#[derive(Debug, Default)]
+struct OxiShut {
+    theme: Theme,
+    focused_action: Action,
 }
 
-fn build_ui(app: &Application) {
-    let mainbox = gtk::Box::new(gtk::Orientation::Horizontal, 5);
-    mainbox.set_css_classes(&[&"mainbox"]);
-    mainbox.set_halign(gtk::Align::Fill);
-    mainbox.set_homogeneous(true);
-
-    let window = ApplicationWindow::builder()
-        .application(app)
-        .name("mainwindow")
-        .content(&mainbox)
-        .build();
-    window.set_vexpand(false);
-    window.set_default_size(800, 350);
-
-    let action_shutdown = SimpleAction::new("shutdown", None);
-    let action_reboot = SimpleAction::new("reboot", None);
-    let action_sleep = SimpleAction::new("sleep", None);
-
-    let button_shutdown = Button::new();
-    button_shutdown.connect_clicked(|button| {
-        button.activate_action("win.shutdown", None).expect("");
-    });
-    button_shutdown.set_icon_name("shutdown");
-    button_shutdown.set_css_classes(&[&"button_shutdown", &"button"]);
-
-    let button_reboot = Button::new();
-    button_reboot.connect_clicked(|button| {
-        button.activate_action("win.reboot", None).expect("");
-    });
-    button_reboot.set_icon_name("reboot");
-    button_reboot.set_css_classes(&[&"button_reboot", &"button"]);
-
-    let button_sleep = Button::new();
-    button_sleep.connect_clicked(|button| {
-        button.activate_action("win.sleep", None).expect("");
-    });
-    button_sleep.set_icon_name("sleep");
-    button_sleep.set_css_classes(&[&"button_sleep", &"button"]);
-
-    mainbox.append(&button_shutdown);
-    mainbox.append(&button_reboot);
-    mainbox.append(&button_sleep);
-
-    action_shutdown.connect_activate(clone!(@weak window => move |_, _| {
-        Command::new("shutdown")
-            .arg("now")
-            .spawn()
-            .expect("No shutdown process available?");
-        window.close();
-    }));
-
-    action_reboot.connect_activate(clone!(@weak window => move |_, _| {
-        Command::new("reboot")
-            .spawn()
-            .expect("No reboot available?");
-        window.close();
-    }));
-
-    action_sleep.connect_activate(clone!(@weak window => move |_, _| {
-        Command::new("playerctl")
-            .arg("-a")
-            .arg("pause")
-            .spawn()
-            .expect("No playerctl available?");
-        Command::new("swaylock")
-            .arg("-c")
-            .arg("000000")
-            .spawn()
-            .expect("No swaylock available?");
-        Command::new("systemctl")
-            .arg("suspend")
-            .spawn()
-            .expect("No soystemd available?");
-        window.close();
-    }));
-
-    window.add_action(&action_shutdown);
-    window.add_action(&action_reboot);
-    window.add_action(&action_sleep);
-
-    gtk4_layer_shell::init_for_window(&window);
-    gtk4_layer_shell::set_keyboard_mode(&window, gtk4_layer_shell::KeyboardMode::Exclusive);
-    gtk4_layer_shell::auto_exclusive_zone_enable(&window);
-    gtk4_layer_shell::set_layer(&window, gtk4_layer_shell::Layer::Overlay);
-
-    let windowrc = Rc::new(window.clone());
-    let windowrc2 = windowrc.clone();
-
-    let focus_event_controller = gtk::EventControllerFocus::new();
-    focus_event_controller.connect_leave(move |_| {
-        windowrc.close();
-    });
-
-    let gesture = gtk::GestureClick::new();
-    gesture.set_button(gtk::gdk::ffi::GDK_BUTTON_PRIMARY as u32);
-
-    gesture.connect_pressed(move |_gesture, _, _, _| {});
-
-    let key_event_controller = gtk::EventControllerKey::new();
-    key_event_controller.connect_key_pressed(move |_controller, key, _keycode, _state| match key {
-        Key::_1 => {
-            windowrc2.activate_action("win.shutdown", None).expect("");
-            windowrc2.close();
-            gtk::Inhibit(true)
-        }
-        Key::_2 => {
-            windowrc2.activate_action("win.reboot", None).expect("");
-            windowrc2.close();
-            gtk::Inhibit(true)
-        }
-        Key::_3 => {
-            windowrc2.activate_action("win.sleep", None).expect("");
-            windowrc2.close();
-            gtk::Inhibit(true)
-        }
-        Key::Escape => {
-            windowrc2.close();
-            gtk::Inhibit(true)
-        }
-        Key::Super_L => {
-            windowrc2.close();
-            gtk::Inhibit(true)
-        }
-        _ => gtk::Inhibit(false),
-    });
-
-    window.add_controller(key_event_controller);
-    window.add_controller(focus_event_controller);
-    window.add_controller(gesture);
-    window.present();
+#[derive(Debug, Clone)]
+enum FocusDirection {
+    Right,
+    Left,
 }
 
-fn load_css(css_string: &String) {
-    let context_provider = gtk::CssProvider::new();
-    if css_string != "" {
-        context_provider.load_from_path(css_string);
-    }
-
-    gtk::style_context_add_provider_for_display(
-        &gtk::gdk::Display::default().unwrap(),
-        &context_provider,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+#[derive(Debug, Copy, Clone, Default, PartialEq)]
+enum Action {
+    #[default]
+    ShutDown,
+    Reboot,
+    Sleep,
 }
 
-fn create_config_dir() -> PathBuf {
-    let maybe_config_dir = dirs::ProjectDirs::from("com", "dashie", "oxishut");
-    if maybe_config_dir.is_none() {
-        panic!("Could not get config directory");
+impl Action {
+    pub fn next(self) -> Self {
+        match self {
+            Action::ShutDown => Action::Reboot,
+            Action::Reboot => Action::Sleep,
+            Action::Sleep => Action::ShutDown,
+        }
     }
-    let config = maybe_config_dir.unwrap();
-    let config_dir = config.config_dir();
-    if !config_dir.exists() {
-        fs::create_dir(config_dir).expect("Could not create config directory");
+
+    pub fn previous(self) -> Self {
+        match self {
+            Action::ShutDown => Action::Sleep,
+            Action::Reboot => Action::ShutDown,
+            Action::Sleep => Action::Reboot,
+        }
     }
-    let file_path = config_dir.join("style.css");
-    if !file_path.exists() {
-        fs::File::create(&file_path).expect("Could not create css config file");
-        fs::write(
-            &file_path,
-            "#MainWindow {
-                border-radius: 10px;
-            }",
+}
+
+#[derive(Debug, Clone)]
+enum Message {
+    Exit,
+    MoveFocus(FocusDirection),
+    Action(Action),
+    CurrentAction,
+}
+
+impl TryInto<LayershellCustomActions> for Message {
+    type Error = Self;
+    fn try_into(self) -> Result<LayershellCustomActions, Self::Error> {
+        Err(self)
+    }
+}
+
+fn box_style(theme: &Theme) -> Style {
+    let palette = theme.extended_palette();
+    Style {
+        background: Some(iced::Background::Color(darken_color(
+            palette.background.base.color,
+        ))),
+        border: iced::border::rounded(10.0),
+        ..container::rounded_box(theme)
+    }
+}
+
+fn run_action(action: &Action) -> Task<Message> {
+    match action {
+        Action::ShutDown => {
+            Command::new("shutdown")
+                .arg("now")
+                .spawn()
+                .expect("No shutdown process available?");
+            std::process::exit(0)
+        }
+        Action::Reboot => {
+            Command::new("reboot")
+                .spawn()
+                .expect("No reboot process available?");
+            std::process::exit(0)
+        }
+        Action::Sleep => {
+            Command::new("playerctl")
+                .arg("-a")
+                .arg("pause")
+                .spawn()
+                .expect("No playerctl available?");
+            Command::new("hyprlock")
+                .spawn()
+                .expect("No hyprlock available?");
+            Command::new("systemctl")
+                .arg("suspend")
+                .spawn()
+                .expect("No soystemd available?");
+            std::process::exit(0)
+        }
+    }
+}
+
+fn wrap_in_rounded_box<'a>(
+    content: impl Into<Element<'a, Message, Theme, Renderer>>,
+) -> Element<'a, Message> {
+    container(content)
+        .style(box_style)
+        .align_x(Alignment::Center)
+        .padding(50)
+        .width(Length::Fill)
+        .into()
+}
+
+#[cfg(debug_assertions)]
+fn svg_path(asset: &'static str) -> PathBuf {
+    PathBuf::from(format!("./assets/{}", asset))
+}
+
+// TODO find a better way than this.
+#[cfg(not(debug_assertions))]
+fn svg_path(asset: &'static str) -> PathBuf {
+    use std::env;
+    use std::path::Path;
+    match env::current_exe() {
+        Ok(exe_path) => exe_path
+            .parent()
+            .unwrap_or(&Path::new("/"))
+            .join(format!("../share/pixmaps/oxishut/{}", asset)),
+        Err(_) => PathBuf::from(format!("./assets/{}", asset)),
+    }
+}
+
+fn mk_button<'a>(
+    asset: &'static str,
+    action: Action,
+    focused_action: &Action,
+) -> Element<'a, Message> {
+    let handle = iced::widget::svg::Handle::from_path(svg_path(asset));
+    let svg = iced::widget::svg(handle).content_fit(iced::ContentFit::Contain);
+    let is_focused = focused_action == &action;
+    oxiced::widgets::oxi_button::button(
+        iced::widget::row!(svg)
+            .height(Length::Fill)
+            .width(Length::Fill)
+            .align_y(Alignment::Center),
+        ButtonVariant::Primary,
+    )
+    .on_press(Message::Action(action))
+    .height(Length::Fill)
+    .width(Length::Fill)
+    .style(move |theme, status| {
+        let palette = theme.extended_palette().primary;
+        let default_style = oxi_button::primary_button(theme, status);
+        let background = if status == Status::Hovered {
+            default_style.background
+        } else if status != Status::Hovered && is_focused {
+            default_style.background
+        } else {
+            Some(iced::Background::Color(lighten_color(palette.base.color)))
+        };
+        iced::widget::button::Style {
+            background,
+            ..default_style
+        }
+    })
+    .into()
+}
+
+impl Application for OxiShut {
+    type Message = Message;
+    type Flags = ();
+    type Theme = Theme;
+    type Executor = iced::executor::Default;
+
+    fn new(_flags: ()) -> (Self, Task<Message>) {
+        (
+            Self {
+                theme: get_theme(),
+                focused_action: Action::ShutDown,
+            },
+            Task::none(),
         )
-        .expect("Could not write default values");
     }
-    file_path
+
+    fn namespace(&self) -> String {
+        String::from("OxiShut")
+    }
+
+    fn update(&mut self, message: Message) -> Task<Message> {
+        match message {
+            Message::Action(action) => run_action(&action),
+            Message::CurrentAction => run_action(&self.focused_action),
+            Message::Exit => std::process::exit(0),
+            Message::MoveFocus(focus_direction) => {
+                match focus_direction {
+                    FocusDirection::Right => self.focused_action = self.focused_action.next(),
+                    FocusDirection::Left => self.focused_action = self.focused_action.previous(),
+                };
+                Task::none()
+            }
+        }
+    }
+
+    fn view(&self) -> Element<Message> {
+        let shutdown_button = mk_button("shutdown.svg", Action::ShutDown, &self.focused_action);
+        let reboot_button = mk_button("reboot.svg", Action::Reboot, &self.focused_action);
+        let sleep_button = mk_button("sleep.svg", Action::Sleep, &self.focused_action);
+        wrap_in_rounded_box(
+            iced::widget::row!(shutdown_button, reboot_button, sleep_button,)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .spacing(35.0),
+        )
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        event::listen_with(move |event, _status, _id| match event {
+            iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
+                modifiers: modifier,
+                key: iced::keyboard::key::Key::Named(key),
+                modified_key: _,
+                physical_key: _,
+                location: _,
+                text: _,
+            }) => match key {
+                Named::Escape => Some(Message::Exit),
+                Named::Enter => Some(Message::CurrentAction),
+                Named::Tab => match modifier {
+                    Modifiers::SHIFT => Some(Message::MoveFocus(FocusDirection::Left)),
+                    _ => Some(Message::MoveFocus(FocusDirection::Right)),
+                },
+                _ => None,
+            },
+            iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
+                modifiers: _,
+                key: _,
+                modified_key: _,
+                physical_key: iced::keyboard::key::Physical::Code(code),
+                location: _,
+                text: _,
+            }) => match code {
+                iced::keyboard::key::Code::Digit1 => Some(Message::Action(Action::ShutDown)),
+                iced::keyboard::key::Code::Digit2 => Some(Message::Action(Action::Reboot)),
+                iced::keyboard::key::Code::Digit3 => Some(Message::Action(Action::Sleep)),
+                _ => None,
+            },
+            _ => None,
+        })
+    }
+
+    fn theme(&self) -> Theme {
+        self.theme.clone()
+    }
+
+    // remove the annoying background color
+    fn style(&self, theme: &Self::Theme) -> iced_layershell::Appearance {
+        let palette = theme.extended_palette();
+        iced_layershell::Appearance {
+            background_color: iced::Color::TRANSPARENT,
+            text_color: palette.background.base.text,
+        }
+    }
+
+    fn scale_factor(&self) -> f64 {
+        SCALE_FACTOR
+    }
+}
+
+const SCALE_FACTOR: f64 = 1.0;
+const WINDOW_SIZE: (u32, u32) = (800, 400);
+const WINDOW_MARGINS: (i32, i32, i32, i32) = (100, 100, 100, 100);
+const WINDOW_LAYER: Layer = Layer::Overlay;
+const WINDOW_KEYBAORD_MODE: KeyboardInteractivity = KeyboardInteractivity::Exclusive;
+
+pub fn main() -> Result<(), iced_layershell::Error> {
+    let settings = Settings {
+        layer_settings: LayerShellSettings {
+            size: Some(WINDOW_SIZE),
+            exclusive_zone: 0,
+            anchor: Anchor::Left | Anchor::Right,
+            layer: WINDOW_LAYER,
+            margin: WINDOW_MARGINS,
+            keyboard_interactivity: WINDOW_KEYBAORD_MODE,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    OxiShut::run(settings)
 }
