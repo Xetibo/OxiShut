@@ -12,10 +12,9 @@ use iced_layershell::{
     reexport::{Anchor, KeyboardInteractivity, Layer},
     settings::{LayerShellSettings, Settings},
 };
+use oxiced::theme::theme::{get_derived_iced_theme, OXITHEME};
 use oxiced::{
-    theme::get_theme,
     widgets::{
-        common::{darken_color, lighten_color},
         oxi_button::{self, ButtonVariant},
     },
 };
@@ -74,12 +73,12 @@ impl TryInto<LayershellCustomActions> for Message {
 }
 
 fn box_style(theme: &Theme) -> Style {
-    let palette = theme.extended_palette();
+    let palette = OXITHEME;
     Style {
-        background: Some(iced::Background::Color(darken_color(
-            palette.background.base.color,
-        ))),
-        border: iced::border::rounded(10.0),
+        background: Some(iced::Background::Color(
+            palette.base
+        )),
+        border: iced::border::color(palette.primary).width(2.0).rounded(palette.border_radius),
         ..container::rounded_box(theme)
     }
 }
@@ -153,7 +152,10 @@ fn mk_button<'a>(
     focused_action: &Action,
 ) -> Element<'a, Message> {
     let handle = iced::widget::svg::Handle::from_path(svg_path(asset));
-    let svg = iced::widget::svg(handle).content_fit(iced::ContentFit::Contain);
+    let svg = iced::widget::svg(handle).content_fit(iced::ContentFit::Contain).style(move |_, _| {
+        let palette = OXITHEME;
+        iced::widget::svg::Style { color: Some(palette.primary) }
+    });
     let is_focused = focused_action == &action;
     oxiced::widgets::oxi_button::button(
         iced::widget::row!(svg)
@@ -166,14 +168,16 @@ fn mk_button<'a>(
     .height(Length::Fill)
     .width(Length::Fill)
     .style(move |theme, status| {
-        let palette = theme.extended_palette().primary;
-        let default_style = oxi_button::primary_button(theme, status);
+        let palette = OXITHEME;
+        let default_style = oxi_button::row_entry(theme, status);
         let background = if status == Status::Hovered {
-            default_style.background
-        } else if status != Status::Hovered && is_focused {
-            default_style.background
+            Some(iced::Background::Color(palette.primary_bg_active))
+        } else if status == Status::Pressed {
+            Some(iced::Background::Color(palette.primary_bg_active))
+        } else if is_focused {
+            Some(iced::Background::Color(palette.primary_bg_hover))
         } else {
-            Some(iced::Background::Color(lighten_color(palette.base.color)))
+            Some(iced::Background::Color(palette.primary_bg))
         };
         iced::widget::button::Style {
             background,
@@ -192,7 +196,7 @@ impl Application for OxiShut {
     fn new(_flags: ()) -> (Self, Task<Message>) {
         (
             Self {
-                theme: get_theme(),
+                theme: get_derived_iced_theme(),
                 focused_action: Action::ShutDown,
             },
             Task::none(),
@@ -270,11 +274,11 @@ impl Application for OxiShut {
     }
 
     // remove the annoying background color
-    fn style(&self, theme: &Self::Theme) -> iced_layershell::Appearance {
-        let palette = theme.extended_palette();
+    fn style(&self, _: &Self::Theme) -> iced_layershell::Appearance {
+        let palette = OXITHEME;
         iced_layershell::Appearance {
             background_color: iced::Color::TRANSPARENT,
-            text_color: palette.background.base.text,
+            text_color: palette.text
         }
     }
 
