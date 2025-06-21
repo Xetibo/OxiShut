@@ -9,6 +9,6 @@ license = "GPL-3.0-only"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-oxiced = "0.5.0"
+oxiced = "0.5.1"
 iced = { version = "0.13.1", features = ["advanced", "canvas", "image", "svg"] }
 iced_layershell = "0.12.0"

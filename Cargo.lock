@@ -1601,31 +1601,10 @@ dependencies = [
  "iced_core",
  "iced_futures",
  "iced_graphics",
- "iced_layershell_macros 0.12.0",
+ "iced_layershell_macros",
  "iced_renderer",
  "iced_runtime",
- "layershellev 0.12.0",
- "log",
- "thiserror",
- "tracing",
- "window_clipboard",
-]
-
-[[package]]
-name = "iced_layershell"
-version = "0.13.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c9ff107c0d7ca85e81566f391f5acabc2473f87ed7de33aaef7b4d600592067"
-dependencies = [
- "futures",
- "iced",
- "iced_core",
- "iced_futures",
- "iced_graphics",
- "iced_layershell_macros 0.13.7",
- "iced_renderer",
- "iced_runtime",
- "layershellev 0.13.7",
+ "layershellev",
  "log",
  "thiserror",
  "tracing",
@@ -1637,19 +1616,6 @@ name = "iced_layershell_macros"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "563e2b7ae2256c825ba8caa0cf9416b5e2ae8973766b51e3b5cd5c350f269aa2"
-dependencies = [
- "darling",
- "manyhow",
- "proc-macro2",
- "quote",
- "syn 2.0.101",
-]
-
-[[package]]
-name = "iced_layershell_macros"
-version = "0.13.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc7a9be2dc188479ea8c327432b55727cbab17be0d79e7eb3df14727191068f1"
 dependencies = [
  "darling",
  "manyhow",
@@ -1917,29 +1883,7 @@ dependencies = [
  "raw-window-handle",
  "tempfile",
  "thiserror",
- "waycrate_xkbkeycode 0.12.0",
- "wayland-backend",
- "wayland-client",
- "wayland-cursor",
- "wayland-protocols",
- "wayland-protocols-misc",
- "wayland-protocols-wlr",
-]
-
-[[package]]
-name = "layershellev"
-version = "0.13.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e5dd46870775aec1b5265b29f3dbd38845423dff5bb1a11e0f7c12e312e6ecf"
-dependencies = [
- "bitflags 2.9.0",
- "calloop 0.14.2",
- "calloop-wayland-source 0.4.0",
- "log",
- "raw-window-handle",
- "tempfile",
- "thiserror",
- "waycrate_xkbkeycode 0.13.7",
+ "waycrate_xkbkeycode",
  "wayland-backend",
  "wayland-client",
  "wayland-cursor",
@@ -2579,12 +2523,12 @@ dependencies = [
 
 [[package]]
 name = "oxiced"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bae71cc73b106643199a0ea1876efdba291d91baaea1ee9b30ad387543401cf"
+checksum = "6eb125f1ee733063ad96a97137ad430031469120c6a3addbb7c0bcc8c933032e"
 dependencies = [
  "iced",
- "iced_layershell 0.13.7",
+ "iced_layershell",
  "once_cell",
  "optional_struct",
  "serde",
@@ -2597,7 +2541,7 @@ name = "oxishut"
 version = "0.1.0"
 dependencies = [
  "iced",
- "iced_layershell 0.12.0",
+ "iced_layershell",
  "oxiced",
 ]
 
@@ -3879,22 +3823,6 @@ name = "waycrate_xkbkeycode"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f2fb462c0162d6787c41a324f9214b3ba7e5e2775b3c457d3bd2b8e9c14bae5"
-dependencies = [
- "bitflags 2.9.0",
- "calloop 0.14.2",
- "log",
- "memmap2",
- "smol_str",
- "wayland-backend",
- "wayland-client",
- "xkbcommon-dl",
-]
-
-[[package]]
-name = "waycrate_xkbkeycode"
-version = "0.13.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a36a4a1e2ae0ef1d628f031e441ec5db79fcce5f888e8082b69340eb7fcd90d"
 dependencies = [
  "bitflags 2.9.0",
  "calloop 0.14.2",
