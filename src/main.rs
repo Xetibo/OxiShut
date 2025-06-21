@@ -1,10 +1,9 @@
 use std::{path::PathBuf, process::Command};
 
-use iced::widget::container;
 use iced::{
-    Alignment, Element, Length, Renderer, Subscription, Task, Theme, event,
+    Alignment, Element, Length, Subscription, Task, Theme, event,
     keyboard::{Modifiers, key::Named},
-    widget::{button::Status, container::Style},
+    widget::{button::Status},
 };
 use iced_layershell::{
     Application,
@@ -13,6 +12,7 @@ use iced_layershell::{
     settings::{LayerShellSettings, Settings},
 };
 use oxiced::theme::theme::{get_derived_iced_theme, OXITHEME};
+use oxiced::widgets::oxi_layer::{layer_theme, rounded_layer};
 use oxiced::{
     widgets::{
         oxi_button::{self, ButtonVariant},
@@ -72,17 +72,6 @@ impl TryInto<LayershellCustomActions> for Message {
     }
 }
 
-fn box_style(theme: &Theme) -> Style {
-    let palette = OXITHEME;
-    Style {
-        background: Some(iced::Background::Color(
-            palette.base
-        )),
-        border: iced::border::color(palette.primary).width(2.0).rounded(palette.border_radius),
-        ..container::rounded_box(theme)
-    }
-}
-
 fn run_action(action: &Action) -> Task<Message> {
     match action {
         Action::ShutDown => {
@@ -114,17 +103,6 @@ fn run_action(action: &Action) -> Task<Message> {
             std::process::exit(0)
         }
     }
-}
-
-fn wrap_in_rounded_box<'a>(
-    content: impl Into<Element<'a, Message, Theme, Renderer>>,
-) -> Element<'a, Message> {
-    container(content)
-        .style(box_style)
-        .align_x(Alignment::Center)
-        .padding(50)
-        .width(Length::Fill)
-        .into()
 }
 
 #[cfg(debug_assertions)]
@@ -169,7 +147,7 @@ fn mk_button<'a>(
     .width(Length::Fill)
     .style(move |theme, status| {
         let palette = OXITHEME;
-        let default_style = oxi_button::row_entry(theme, status);
+        let default_style = oxi_button::neutral_button(theme, status);
         let background = if status == Status::Hovered {
             Some(iced::Background::Color(palette.primary_bg_active))
         } else if status == Status::Pressed {
@@ -226,12 +204,12 @@ impl Application for OxiShut {
         let shutdown_button = mk_button("shutdown.svg", Action::ShutDown, &self.focused_action);
         let reboot_button = mk_button("reboot.svg", Action::Reboot, &self.focused_action);
         let sleep_button = mk_button("sleep.svg", Action::Sleep, &self.focused_action);
-        wrap_in_rounded_box(
+        let element = 
             iced::widget::row!(shutdown_button, reboot_button, sleep_button,)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .spacing(35.0),
-        )
+                .spacing(35.0);
+        rounded_layer(element, WINDOW_SIZE)
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
@@ -275,11 +253,7 @@ impl Application for OxiShut {
 
     // remove the annoying background color
     fn style(&self, _: &Self::Theme) -> iced_layershell::Appearance {
-        let palette = OXITHEME;
-        iced_layershell::Appearance {
-            background_color: iced::Color::TRANSPARENT,
-            text_color: palette.text
-        }
+        layer_theme()
     }
 
     fn scale_factor(&self) -> f64 {
