@@ -3,21 +3,16 @@ use std::{path::PathBuf, process::Command};
 use iced::{
     Alignment, Element, Length, Subscription, Task, Theme, event,
     keyboard::{Modifiers, key::Named},
-    widget::{button::Status},
+    widget::button::Status,
 };
 use iced_layershell::{
-    Application,
-    actions::LayershellCustomActions,
+    actions::LayershellCustomActionWithId,
     reexport::{Anchor, KeyboardInteractivity, Layer},
     settings::{LayerShellSettings, Settings},
 };
-use oxiced::theme::theme::{get_derived_iced_theme, OXITHEME};
+use oxiced::theme::theme::{OXITHEME, get_derived_iced_theme};
+use oxiced::widgets::oxi_button::{self, ButtonVariant};
 use oxiced::widgets::oxi_layer::{layer_theme, rounded_layer};
-use oxiced::{
-    widgets::{
-        oxi_button::{self, ButtonVariant},
-    },
-};
 
 #[derive(Debug, Default)]
 struct OxiShut {
@@ -65,9 +60,9 @@ enum Message {
     CurrentAction,
 }
 
-impl TryInto<LayershellCustomActions> for Message {
+impl TryInto<LayershellCustomActionWithId> for Message {
     type Error = Self;
-    fn try_into(self) -> Result<LayershellCustomActions, Self::Error> {
+    fn try_into(self) -> Result<LayershellCustomActionWithId, Self::Error> {
         Err(self)
     }
 }
@@ -130,10 +125,14 @@ fn mk_button<'a>(
     focused_action: &Action,
 ) -> Element<'a, Message> {
     let handle = iced::widget::svg::Handle::from_path(svg_path(asset));
-    let svg = iced::widget::svg(handle).content_fit(iced::ContentFit::Contain).style(move |_, _| {
-        let palette = OXITHEME;
-        iced::widget::svg::Style { color: Some(palette.primary) }
-    });
+    let svg = iced::widget::svg(handle)
+        .content_fit(iced::ContentFit::Contain)
+        .style(move |_, _| {
+            let palette = OXITHEME;
+            iced::widget::svg::Style {
+                color: Some(palette.primary),
+            }
+        });
     let is_focused = focused_action == &action;
     oxiced::widgets::oxi_button::button(
         iced::widget::row!(svg)
@@ -165,13 +164,8 @@ fn mk_button<'a>(
     .into()
 }
 
-impl Application for OxiShut {
-    type Message = Message;
-    type Flags = ();
-    type Theme = Theme;
-    type Executor = iced::executor::Default;
-
-    fn new(_flags: ()) -> (Self, Task<Message>) {
+impl OxiShut {
+    fn new() -> (Self, Task<Message>) {
         (
             Self {
                 theme: get_derived_iced_theme(),
@@ -181,7 +175,7 @@ impl Application for OxiShut {
         )
     }
 
-    fn namespace(&self) -> String {
+    fn namespace() -> String {
         String::from("OxiShut")
     }
 
@@ -204,15 +198,14 @@ impl Application for OxiShut {
         let shutdown_button = mk_button("shutdown.svg", Action::ShutDown, &self.focused_action);
         let reboot_button = mk_button("reboot.svg", Action::Reboot, &self.focused_action);
         let sleep_button = mk_button("sleep.svg", Action::Sleep, &self.focused_action);
-        let element = 
-            iced::widget::row!(shutdown_button, reboot_button, sleep_button,)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .spacing(35.0);
+        let element = iced::widget::row!(shutdown_button, reboot_button, sleep_button,)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .spacing(35.0);
         rounded_layer(element, WINDOW_SIZE)
     }
 
-    fn subscription(&self) -> Subscription<Self::Message> {
+    fn subscription(&self) -> Subscription<Message> {
         event::listen_with(move |event, _status, _id| match event {
             iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
                 modifiers: modifier,
@@ -252,7 +245,7 @@ impl Application for OxiShut {
     }
 
     // remove the annoying background color
-    fn style(&self, _: &Self::Theme) -> iced_layershell::Appearance {
+    fn style(_: &OxiShut, _: &Theme) -> iced::theme::Style {
         layer_theme()
     }
 
@@ -280,5 +273,16 @@ pub fn main() -> Result<(), iced_layershell::Error> {
         },
         ..Default::default()
     };
-    OxiShut::run(settings)
+    iced_layershell::application(
+        OxiShut::new,
+        OxiShut::namespace,
+        OxiShut::update,
+        OxiShut::view,
+    )
+    .settings(settings)
+    .subscription(OxiShut::subscription)
+    .theme(OxiShut::theme)
+    .scale_factor(OxiShut::scale_factor)
+    .style(OxiShut::style)
+    .run()
 }
