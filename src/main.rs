@@ -265,7 +265,7 @@ pub fn main() -> Result<(), iced_layershell::Error> {
         layer_settings: LayerShellSettings {
             size: Some(WINDOW_SIZE),
             exclusive_zone: 0,
-            anchor: Anchor::Left | Anchor::Right,
+            anchor: Anchor::empty(),
             layer: WINDOW_LAYER,
             margin: WINDOW_MARGINS,
             keyboard_interactivity: WINDOW_KEYBAORD_MODE,
