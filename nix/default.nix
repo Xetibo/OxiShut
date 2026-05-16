@@ -18,6 +18,9 @@
   libXrandr,
   libXi,
   libXcursor,
+  mesa,
+  stdenv,
+  makeWrapper,
   ...
 }: let
   cargoToml = builtins.fromTOML (builtins.readFile ../Cargo.toml);
@@ -28,6 +31,13 @@
     pkg-config
     libclang
   ];
+  driverIcdPath = "${mesa}/share/vulkan/icd.d";
+  icdArch =
+    if stdenv.hostPlatform.system == "x86_64-linux"
+    then "x86_64"
+    else if stdenv.hostPlatform.system == "aarch64-linux"
+    then "aarch64"
+    else "x86_64";
 in
   rustPlatform.buildRustPackage rec {
     pname = cargoToml.package.name;
@@ -46,11 +56,7 @@ in
     cargoLock = {
       inherit lockFile;
       outputHashes = {
-        "cryoglyph-0.1.0" = "sha256-Jc+rhzd5BIT7aYBtIfsBFFKkGChdEYhDHdYGiv4KE+c=";
-        "dpi-0.1.1" = "sha256-hlVhlQ8MmIbNFNr6BM4edKdZbe+ixnPpKm819zauFLQ=";
-        "iced-0.14.0-dev" = "sha256-ToInrksjWeUj7yKF4I7/GOD883abHX6WrmADCZrOa80=";
-        "iced_exdevtools-0.14.0-dev" = "sha256-1ncfSYSeHUl59cGchpbXyAh/IB6Mxse6D3P5CLRh9kE=";
-        "oxiced-0.5.1" = "sha256-U8gYs3Xzvso0QdDapOTgR3sPPMDjdPc7jwbI32o3TyE=";
+        "oxiced-0.5.1" = "sha256-pjRHbeuQrbN66AAdpZyhOZ5+xr/XssYgk/DLRR0vCk0=";
       };
     };
 
@@ -65,6 +71,7 @@ in
       libGL
       libxkbcommon
       libclang
+      makeWrapper
     ];
 
     copyLibs = true;
@@ -85,6 +92,8 @@ in
       ];
     in ''
       patchelf --set-rpath "${libPath}" "$out/bin/oxishut"
+      wrapProgram "$out/bin/oxishut" \
+        --set VK_ICD_FILENAMES "${driverIcdPath}/radeon_icd.${icdArch}.json:${driverIcdPath}/intel_icd.${icdArch}.json"
     '';
 
     postInstall = ''

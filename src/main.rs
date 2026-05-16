@@ -3,18 +3,20 @@ use std::{path::PathBuf, process::Command};
 use iced::{
     Alignment, Element, Length, Subscription, Task, Theme, event,
     keyboard::{Modifiers, key::Named},
+    theme::Style,
     widget::button::Status,
 };
 use iced_layershell::{
-    actions::LayershellCustomActionWithId,
     reexport::{Anchor, KeyboardInteractivity, Layer},
     settings::{LayerShellSettings, Settings},
 };
-use oxiced::theme::theme::{OXITHEME, get_derived_iced_theme};
-use oxiced::widgets::oxi_button::{self, ButtonVariant};
 use oxiced::widgets::oxi_layer::{layer_theme, rounded_layer};
+use oxiced::{
+    theme::theme_impl::{OXITHEME, get_derived_iced_theme},
+    widgets::oxi_button::{self, ButtonVariant},
+};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct OxiShut {
     theme: Theme,
     focused_action: Action,
@@ -60,9 +62,11 @@ enum Message {
     CurrentAction,
 }
 
-impl TryInto<LayershellCustomActionWithId> for Message {
+impl TryInto<iced_layershell::actions::LayerShellCustomActionWithId> for Message {
     type Error = Self;
-    fn try_into(self) -> Result<LayershellCustomActionWithId, Self::Error> {
+    fn try_into(
+        self,
+    ) -> Result<iced_layershell::actions::LayerShellCustomActionWithId, Self::Error> {
         Err(self)
     }
 }
@@ -128,7 +132,7 @@ fn mk_button<'a>(
     let svg = iced::widget::svg(handle)
         .content_fit(iced::ContentFit::Contain)
         .style(move |_, _| {
-            let palette = OXITHEME;
+            let palette = &OXITHEME;
             iced::widget::svg::Style {
                 color: Some(palette.primary),
             }
@@ -145,8 +149,8 @@ fn mk_button<'a>(
     .height(Length::Fill)
     .width(Length::Fill)
     .style(move |theme, status| {
-        let palette = OXITHEME;
-        let default_style = oxi_button::neutral_button(theme, status);
+        let palette = &OXITHEME;
+        let default_style = oxi_button::primary_bg_button(theme, status);
         let background = if status == Status::Hovered {
             Some(iced::Background::Color(palette.primary_bg_active))
         } else if status == Status::Pressed {
@@ -194,7 +198,7 @@ impl OxiShut {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&'_ self) -> Element<'_, Message> {
         let shutdown_button = mk_button("shutdown.svg", Action::ShutDown, &self.focused_action);
         let reboot_button = mk_button("reboot.svg", Action::Reboot, &self.focused_action);
         let sleep_button = mk_button("sleep.svg", Action::Sleep, &self.focused_action);
@@ -214,6 +218,7 @@ impl OxiShut {
                 physical_key: _,
                 location: _,
                 text: _,
+                repeat: _,
             }) => match key {
                 Named::Escape => Some(Message::Exit),
                 Named::Enter => Some(Message::CurrentAction),
@@ -230,6 +235,7 @@ impl OxiShut {
                 physical_key: iced::keyboard::key::Physical::Code(code),
                 location: _,
                 text: _,
+                repeat: _,
             }) => match code {
                 iced::keyboard::key::Code::Digit1 => Some(Message::Action(Action::ShutDown)),
                 iced::keyboard::key::Code::Digit2 => Some(Message::Action(Action::Reboot)),
@@ -245,16 +251,16 @@ impl OxiShut {
     }
 
     // remove the annoying background color
-    fn style(_: &OxiShut, _: &Theme) -> iced::theme::Style {
+    fn style(_: &OxiShut, _: &Theme) -> Style {
         layer_theme()
     }
 
-    fn scale_factor(&self) -> f64 {
+    fn scale_factor(&self) -> f32 {
         SCALE_FACTOR
     }
 }
 
-const SCALE_FACTOR: f64 = 1.0;
+const SCALE_FACTOR: f32 = 1.0;
 const WINDOW_SIZE: (u32, u32) = (800, 400);
 const WINDOW_MARGINS: (i32, i32, i32, i32) = (100, 100, 100, 100);
 const WINDOW_LAYER: Layer = Layer::Overlay;
